@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Login</title>
+    <style>body{font-family:Segoe UI,Arial;padding:20px}form{max-width:360px}label{display:block;margin:8px 0}</style>
+  </head>
+  <body>
+    <h1><img class="logo" src="assets/images/logo.jpg" alt="MeaGlow logo" style="height:36px;vertical-align:middle;margin-right:8px">Admin Login</h1>
+    <form id="loginForm">
+      <label>Username<br><input name="username" required></label>
+      <label>Password<br><input name="password" type="password" required></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <div id="msg"></div>
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        const res = await fetch('/login', { method:'POST', body: new URLSearchParams(Array.from(form.entries())) });
+        if(res.ok){ location.href = '/admin'; } else { document.getElementById('msg').textContent = 'Login failed'; }
+      });
+    </script>
+  </body>
+</html>

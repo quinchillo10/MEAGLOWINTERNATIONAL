@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: meaglow-site
+    env: docker
+    repo: GITHUB/REPO
+    branch: main
+    plan: free
+    dockerfilePath: ./Dockerfile
+    startCommand: npm start
+    envVars:
+      - key: ADMIN_USER
+        value: "__ADMIN_USER__"
+        fromService: false
+      - key: ADMIN_PASS
+        value: "__ADMIN_PASS__"
+        fromService: false
+      - key: SESSION_SECRET
+        value: "__SESSION_SECRET__"
+        fromService: false

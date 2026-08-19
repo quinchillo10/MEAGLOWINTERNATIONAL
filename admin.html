@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — Upload Images</title>
+    <style>
+      body{font-family:Segoe UI,Arial,sans-serif;padding:20px}
+      form{max-width:520px}
+      label{display:block;margin:12px 0}
+      input,select{width:100%;padding:8px}
+      button{margin-top:12px;padding:8px 12px}
+      .result{margin-top:12px}
+    </style>
+  </head>
+  <body>
+    <h1><img class="logo" src="assets/images/logo.jpg" alt="MeaGlow logo" style="height:36px;vertical-align:middle;margin-right:8px">MeaGlow — Admin Image Manager</h1>
+    <p>Upload images and manage images assigned to job/service keys.</p>
+    <p><button id="logoutBtn">Logout</button></p>
+    <form id="uploadForm">
+      <label>Target key
+        <select name="key" required id="keySelect">
+          <option value="housekeeping">housekeeping</option>
+          <option value="security">security</option>
+          <option value="warehouse">warehouse</option>
+          <option value="plumbing">plumbing</option>
+          <option value="drivers">drivers</option>
+          <option value="construction">construction</option>
+          <option value="plant">plant</option>
+          <option value="professional">professional</option>
+        </select>
+      </label>
+      <label>Image files
+        <input type="file" name="images" accept="image/*" multiple required>
+      </label>
+      <button type="submit">Upload</button>
+    </form>
+
+    <div id="imagesList"></div>
+
+    <div class="result" id="result"></div>
+
+    <hr>
+    <h2>Edit Job Requirements</h2>
+    <p>Select a job, edit its requirements (one per line) and save.</p>
+    <label>Job
+      <select id="jobSelect"></select>
+    </label>
+    <label>Requirements (one per line)
+      <textarea id="jobReqs" rows="8" style="width:100%"></textarea>
+    </label>
+    <button id="saveJobReq" type="button">Save Requirements</button>
+    <div id="jobMsg" style="margin-top:8px"></div>
+
+    <script>
+      async function fetchManifest(){
+        try{
+          const r = await fetch('/assets/images/manifest.json');
+          return await r.json();
+        } catch(e){ return {}; }
+      }
+
+      function renderImagesForKey(manifest, key){
+        const container = document.getElementById('imagesList');
+        container.innerHTML = '';
+        const info = manifest[key] || { images: [], primary: null };
+        if(!info.images || info.images.length===0){ container.textContent = 'No images uploaded for this key yet.'; return; }
+        const list = document.createElement('div');
+        for(const fn of info.images){
+          const item = document.createElement('div');
+          item.style.display='flex';item.style.alignItems='center';item.style.margin='8px 0';
+          const img = document.createElement('img'); img.src = '/assets/images/thumb-' + fn; img.style.width='120px'; img.style.height='80px'; img.style.objectFit='cover'; img.style.marginRight='12px';
+          const meta = document.createElement('div');
+          meta.innerHTML = '<div>' + fn + '</div>';
+          const radio = document.createElement('input'); radio.type='radio'; radio.name='primary'; radio.value=fn; radio.checked = (info.primary === fn);
+          radio.addEventListener('change', async ()=>{
+            await fetch('/set-primary', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, filename: fn }) });
+            loadAndRender();
+          });
+            const up = document.createElement('button'); up.textContent='↑'; up.style.marginLeft='8px';
+            up.addEventListener('click', async ()=>{ move(fn, -1); });
+            const down = document.createElement('button'); down.textContent='↓'; down.style.marginLeft='4px';
+            down.addEventListener('click', async ()=>{ move(fn, 1); });
+          const del = document.createElement('button'); del.textContent='Delete'; del.style.marginLeft='8px';
+          del.addEventListener('click', async ()=>{
+            if(!confirm('Delete image ' + fn + '?')) return;
+            await fetch('/delete-image', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, filename: fn }) });
+            loadAndRender();
+          });
+          meta.appendChild(document.createElement('div'));
+            item.appendChild(img);
+            item.appendChild(radio);
+            item.appendChild(meta);
+            item.appendChild(up);
+            item.appendChild(down);
+            item.appendChild(del);
+          list.appendChild(item);
+        }
+        container.appendChild(list);
+        // move function to reorder
+        async function move(filename, delta){
+          const current = info.images.slice();
+          const idx = current.indexOf(filename);
+          if(idx === -1) return;
+          const newIdx = idx + delta;
+          if(newIdx < 0 || newIdx >= current.length) return;
+          const tmp = current[newIdx]; current[newIdx] = current[idx]; current[idx] = tmp;
+          await fetch('/reorder-images', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, images: current }) });
+          loadAndRender();
+        }
+      }
+
+      async function loadAndRender(){
+        const key = document.getElementById('keySelect').value;
+        const manifest = await fetchManifest();
+        renderImagesForKey(manifest, key);
+      }
+
+      document.getElementById('keySelect').addEventListener('change', loadAndRender);
+
+      document.getElementById('uploadForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+        const form = e.currentTarget;
+        const data = new FormData(form);
+        const resEl = document.getElementById('result');
+        resEl.textContent = 'Uploading...';
+
+        try{
+          const res = await fetch('/upload', { method: 'POST', body: data });
+          const json = await res.json();
+          if(json.ok){
+            resEl.textContent = 'Uploaded: ' + (json.uploaded || []).join(', ');
+            await loadAndRender();
+          } else {
+            resEl.textContent = 'Upload failed: ' + (json.error || 'unknown');
+          }
+        } catch(err){
+          resEl.textContent = 'Upload error: ' + err.message;
+        }
+      });
+      document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+        await fetch('/logout', { method:'POST' });
+        location.href = '/admin-login.html';
+      });
+
+      // initial render
+      loadAndRender();
+
+      // load jobs into selector
+      async function loadJobs(){
+        const r = await fetch('/assets/data/jobs.json');
+        const jobs = await r.json();
+        const sel = document.getElementById('jobSelect');
+        sel.innerHTML = '';
+        for(const [id, info] of Object.entries(jobs)){
+          const opt = document.createElement('option'); opt.value = id; opt.textContent = info.title || id; sel.appendChild(opt);
+        }
+        sel.addEventListener('change', ()=>{
+          const info = jobs[sel.value] || { requirements: [] };
+          document.getElementById('jobReqs').value = (info.requirements||[]).join('\n');
+        });
+        // trigger initial
+        if(sel.options.length) sel.dispatchEvent(new Event('change'));
+      }
+      loadJobs();
+
+      document.getElementById('saveJobReq').addEventListener('click', async ()=>{
+        const id = document.getElementById('jobSelect').value;
+        const txt = document.getElementById('jobReqs').value;
+        const requirements = txt.split('\n').map(s=>s.trim()).filter(Boolean);
+        document.getElementById('jobMsg').textContent = 'Saving...';
+        const res = await fetch('/api/jobs/'+encodeURIComponent(id), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ requirements }) });
+        const json = await res.json();
+        if(json.ok){ document.getElementById('jobMsg').textContent = 'Saved.'; setTimeout(()=>document.getElementById('jobMsg').textContent='',1500); }
+        else document.getElementById('jobMsg').textContent = 'Save failed';
+      });
+    </script>
+  </body>
+</html>
