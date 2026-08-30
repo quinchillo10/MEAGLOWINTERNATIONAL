@@ -21,9 +21,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: process.env.SESSION_SECRET || 'meaglow-secret', resave: false, saveUninitialized: false }));
 app.use(express.static(publicDir));
 
-// simple session-based auth
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || 'password';
+// simple session-based auth (defaults can be overridden with env vars)
+const ADMIN_USER = process.env.ADMIN_USER || 'Meaglowltd';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'AWndungu2021';
 
 function requireAuth(req, res, next){
   if(req.session && req.session.user === ADMIN_USER) return next();
@@ -67,6 +67,22 @@ app.post('/login', (req, res) => {
 
 app.post('/logout', (req, res) => {
   req.session.destroy(()=>res.json({ ok: true }));
+});
+
+// contact form handler - persist messages and redirect to thank-you
+app.post('/contact', (req, res) => {
+  const { name, email, message } = req.body;
+  if(!name || !email || !message) return res.status(400).send('Missing fields');
+  const dataDir = path.join(publicDir, 'assets', 'data');
+  if(!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  const messagesPath = path.join(dataDir, 'messages.json');
+  let messages = [];
+  if(fs.existsSync(messagesPath)){
+    try{ messages = JSON.parse(fs.readFileSync(messagesPath)); }catch(e){ messages = []; }
+  }
+  messages.push({ name, email, message, receivedAt: new Date().toISOString() });
+  fs.writeFileSync(messagesPath, JSON.stringify(messages, null, 2));
+  return res.redirect('/thank-you.html');
 });
 
 // upload multiple images for a key

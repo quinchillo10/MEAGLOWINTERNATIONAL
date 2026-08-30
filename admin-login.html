@@ -4,7 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Admin Login</title>
-    <style>body{font-family:Segoe UI,Arial;padding:20px}form{max-width:360px}label{display:block;margin:8px 0}</style>
+    <style>
+      body{font-family:Segoe UI,Arial;padding:20px}
+      form{max-width:360px}
+      label{display:block;margin:8px 0}
+      h1{color:#ffffff;font-weight:800;font-size:32px;margin:0 0 18px;display:flex;align-items:center;gap:12px}
+    </style>
   </head>
   <body>
     <h1><img class="logo" src="assets/images/logo.jpg" alt="MeaGlow logo" style="height:36px;vertical-align:middle;margin-right:8px">Admin Login</h1>
@@ -17,9 +22,23 @@
     <script>
       document.getElementById('loginForm').addEventListener('submit', async function(e){
         e.preventDefault();
+        const msg = document.getElementById('msg');
+        msg.textContent = '';
         const form = new FormData(e.currentTarget);
-        const res = await fetch('/login', { method:'POST', body: new URLSearchParams(Array.from(form.entries())) });
-        if(res.ok){ location.href = '/admin'; } else { document.getElementById('msg').textContent = 'Login failed'; }
+        try{
+          const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(form),
+            credentials: 'same-origin'
+          });
+          if(res.ok){ location.href = '/admin'; }
+          else if(res.status === 401){ msg.textContent = 'Invalid username or password'; }
+          else { msg.textContent = 'Login error: ' + res.status; }
+        }catch(err){
+          msg.textContent = 'Network error: ' + (err.message || err);
+          console.error('Login fetch failed', err);
+        }
       });
     </script>
   </body>

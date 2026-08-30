@@ -1,0 +1,76 @@
+{
+  "hk1": {
+    "title": "Housekeeper — Private Estate",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Training/care certificates (if applying for homecare)"
+    ]
+  },
+  "sec1": {
+    "title": "Security Officer — Commercial Site",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Security certification (where applicable)"
+    ]
+  },
+  "wh1": {
+    "title": "Warehouse Operative",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Forklift certificate (if required)"
+    ]
+  },
+  "drv1": {
+    "title": "Delivery Driver",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Driving Licence (appropriate class)"
+    ]
+  },
+  "plm1": {
+    "title": "Plumber — Maintenance",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Trade qualifications / diploma"
+    ]
+  },
+  "con1": {
+    "title": "Construction Labourer",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "PPE certifications (if applicable)"
+    ]
+  },
+  "plt1": {
+    "title": "Plant Operator",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Operator certifications / licenses"
+    ]
+  },
+  "prof1": {
+    "title": "Project Manager — Construction",
+    "requirements": [
+      "Valid Passport",
+      "National ID",
+      "Passport-size photos",
+      "Diploma / degree certificates",
+      "PMP or equivalent training certificate",
+      "For Germany: ZAB recognition letter (if applicable)"
+    ]
+  }
+}

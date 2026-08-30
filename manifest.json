@@ -1,0 +1,52 @@
+{
+  "housekeeping": {
+    "images": [
+      "housekeeping.svg",
+      "images-1787347264392-573295994.jpg"
+    ],
+    "primary": "housekeeping.svg"
+  },
+  "security": {
+    "images": [
+      "security.svg"
+    ],
+    "primary": "security.svg"
+  },
+  "warehouse": {
+    "images": [
+      "warehouse.svg"
+    ],
+    "primary": "warehouse.svg"
+  },
+  "plumbing": {
+    "images": [
+      "plumbing.svg"
+    ],
+    "primary": "plumbing.svg"
+  },
+  "drivers": {
+    "images": [
+      "drivers.svg"
+    ],
+    "primary": "drivers.svg"
+  },
+  "construction": {
+    "images": [
+      "1629370000000-Urban construction workers labor day and the importance of workers _ Premium AI-generated image.jpg",
+      "construction.svg"
+    ],
+    "primary": "1629370000000-Urban construction workers labor day and the importance of workers _ Premium AI-generated image.jpg"
+  },
+  "plant": {
+    "images": [
+      "plant.svg"
+    ],
+    "primary": "plant.svg"
+  },
+  "professional": {
+    "images": [
+      "professional.svg"
+    ],
+    "primary": "professional.svg"
+  }
+}
