@@ -3,177 +3,261 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Admin — Upload Images</title>
+    <title>Admin — Manage Content & Media</title>
+    <script>
+      if(sessionStorage.getItem('isAdminLoggedIn') !== 'true'){
+        location.href = 'admin-login.html';
+      }
+    </script>
     <style>
-      body{font-family:Segoe UI,Arial,sans-serif;padding:20px}
-      form{max-width:520px}
-      label{display:block;margin:12px 0}
-      input,select{width:100%;padding:8px}
-      button{margin-top:12px;padding:8px 12px}
-      .result{margin-top:12px}
+      body{font-family:'Segoe UI',Arial,sans-serif;padding:25px;background:#f4f7f6;color:#333;max-width:700px;margin:0 auto}
+      header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+      h1{font-size:22px;margin:0;display:flex;align-items:center;gap:10px}
+      .card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:20px}
+      h2{margin-top:0;font-size:18px;color:#0056b3;border-bottom:2px solid #eef2f5;padding-bottom:8px}
+      label{display:block;margin:12px 0 4px;font-weight:600;font-size:14px}
+      input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px}
+      button{background:#0056b3;color:#fff;border:none;padding:10px 16px;border-radius:4px;font-weight:bold;cursor:pointer;margin-top:12px}
+      button:hover{background:#004085}
+      button.logout{background:#d9534f}
+      button.logout:hover{background:#c9302c}
+      .msg{margin-top:10px;font-weight:bold;font-size:14px}
+      .success{color:#28a745}
+      .error{color:#dc3545}
     </style>
   </head>
   <body>
-    <h1><img class="logo" src="assets/images/logo.jpg" alt="MeaGlow logo" style="height:36px;vertical-align:middle;margin-right:8px">MeaGlow — Admin Image Manager</h1>
-    <p>Upload images and manage images assigned to job/service keys.</p>
-    <p><button id="logoutBtn">Logout</button></p>
-    <form id="uploadForm">
-      <label>Target key
-        <select name="key" required id="keySelect">
-          <option value="housekeeping">housekeeping</option>
-          <option value="security">security</option>
-          <option value="warehouse">warehouse</option>
-          <option value="plumbing">plumbing</option>
-          <option value="drivers">drivers</option>
-          <option value="construction">construction</option>
-          <option value="plant">plant</option>
-          <option value="professional">professional</option>
-        </select>
-      </label>
-      <label>Image files
-        <input type="file" name="images" accept="image/*" multiple required>
-      </label>
-      <button type="submit">Upload</button>
-    </form>
+    <header>
+      <h1><img src="assets/images/logo.jpg" alt="Logo" style="height:32px"> Admin Portal</h1>
+      <button class="logout" id="logoutBtn">Logout</button>
+    </header>
 
-    <div id="imagesList"></div>
+    <!-- 1. ADD NEW JOB -->
+    <div class="card">
+      <h2>➕ Add New Job / Service</h2>
+      <form id="addJobForm">
+        <label>Job Key (lowercase, e.g., <code>gardening</code>)</label>
+        <input type="text" id="newJobKey" placeholder="e.g. electrical" required>
+        <label>Job Title</label>
+        <input type="text" id="newJobTitle" placeholder="e.g. Electrical Services" required>
+        <label>Requirements (one per line)</label>
+        <textarea id="newJobReqs" rows="4" required></textarea>
+        <button type="submit">Add Job</button>
+      </form>
+      <div id="addJobMsg" class="msg"></div>
+    </div>
 
-    <div class="result" id="result"></div>
-
-    <hr>
-    <h2>Edit Job Requirements</h2>
-    <p>Select a job, edit its requirements (one per line) and save.</p>
-    <label>Job
+    <!-- 2. EDIT EXISTING JOBS -->
+    <div class="card">
+      <h2>✏️ Edit Job Requirements</h2>
+      <label>Select Job</label>
       <select id="jobSelect"></select>
-    </label>
-    <label>Requirements (one per line)
-      <textarea id="jobReqs" rows="8" style="width:100%"></textarea>
-    </label>
-    <button id="saveJobReq" type="button">Save Requirements</button>
-    <div id="jobMsg" style="margin-top:8px"></div>
+      <label>Requirements (one per line)</label>
+      <textarea id="jobReqs" rows="5"></textarea>
+      <button id="saveJobBtn" type="button">Save Job Changes</button>
+      <div id="editJobMsg" class="msg"></div>
+    </div>
+
+    <!-- 3. MANAGE IMAGES & MANIFEST -->
+    <div class="card">
+      <h2>🖼️ Manage Images & Manifest Links</h2>
+      <label>Select Target Category Key</label>
+      <select id="imageKeySelect">
+        <option value="housekeeping">housekeeping</option>
+        <option value="security">security</option>
+        <option value="warehouse">warehouse</option>
+        <option value="plumbing">plumbing</option>
+        <option value="drivers">drivers</option>
+        <option value="construction">construction</option>
+        <option value="plant">plant</option>
+        <option value="professional">professional</option>
+      </select>
+
+      <label>Add Image Filename (e.g., <code>new-image.jpg</code> after uploading via git/file manager)</label>
+      <input type="text" id="newImageFilename" placeholder="image-filename.jpg">
+      <button id="addImageToManifestBtn" type="button">Add Image to Manifest</button>
+      
+      <div id="manifestImagesList" style="margin-top:15px;font-size:14px"></div>
+      <div id="manifestMsg" class="msg"></div>
+    </div>
 
     <script>
-      async function fetchManifest(){
-        try{
-          const r = await fetch('/assets/images/manifest.json');
-          return await r.json();
-        } catch(e){ return {}; }
+      const GITHUB_USER = "quinchillo10";
+      const GITHUB_REPO = "MEAGLOWINTERNATIONAL";
+      const GITHUB_BRANCH = "main"; // Change to "master" if your repository branch is master
+
+      let jobsData = {};
+      let manifestData = {};
+
+      function getGitHubToken() {
+        let token = sessionStorage.getItem('gh_token');
+        if (!token) {
+          token = prompt("Enter your GitHub Personal Access Token to commit changes:");
+          if (token) sessionStorage.setItem('gh_token', token);
+        }
+        return token;
       }
 
-      function renderImagesForKey(manifest, key){
-        const container = document.getElementById('imagesList');
-        container.innerHTML = '';
-        const info = manifest[key] || { images: [], primary: null };
-        if(!info.images || info.images.length===0){ container.textContent = 'No images uploaded for this key yet.'; return; }
-        const list = document.createElement('div');
-        for(const fn of info.images){
-          const item = document.createElement('div');
-          item.style.display='flex';item.style.alignItems='center';item.style.margin='8px 0';
-          const img = document.createElement('img'); img.src = '/assets/images/thumb-' + fn; img.style.width='120px'; img.style.height='80px'; img.style.objectFit='cover'; img.style.marginRight='12px';
-          const meta = document.createElement('div');
-          meta.innerHTML = '<div>' + fn + '</div>';
-          const radio = document.createElement('input'); radio.type='radio'; radio.name='primary'; radio.value=fn; radio.checked = (info.primary === fn);
-          radio.addEventListener('change', async ()=>{
-            await fetch('/set-primary', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, filename: fn }) });
-            loadAndRender();
-          });
-            const up = document.createElement('button'); up.textContent='↑'; up.style.marginLeft='8px';
-            up.addEventListener('click', async ()=>{ move(fn, -1); });
-            const down = document.createElement('button'); down.textContent='↓'; down.style.marginLeft='4px';
-            down.addEventListener('click', async ()=>{ move(fn, 1); });
-          const del = document.createElement('button'); del.textContent='Delete'; del.style.marginLeft='8px';
-          del.addEventListener('click', async ()=>{
-            if(!confirm('Delete image ' + fn + '?')) return;
-            await fetch('/delete-image', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, filename: fn }) });
-            loadAndRender();
-          });
-          meta.appendChild(document.createElement('div'));
-            item.appendChild(img);
-            item.appendChild(radio);
-            item.appendChild(meta);
-            item.appendChild(up);
-            item.appendChild(down);
-            item.appendChild(del);
-          list.appendChild(item);
-        }
-        container.appendChild(list);
-        // move function to reorder
-        async function move(filename, delta){
-          const current = info.images.slice();
-          const idx = current.indexOf(filename);
-          if(idx === -1) return;
-          const newIdx = idx + delta;
-          if(newIdx < 0 || newIdx >= current.length) return;
-          const tmp = current[newIdx]; current[newIdx] = current[idx]; current[idx] = tmp;
-          await fetch('/reorder-images', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, images: current }) });
-          loadAndRender();
-        }
-      }
+      async function commitFileToGitHub(path, jsonContentObject, commitMessage) {
+        const token = getGitHubToken();
+        if (!token) throw new Error("GitHub token required.");
 
-      async function loadAndRender(){
-        const key = document.getElementById('keySelect').value;
-        const manifest = await fetchManifest();
-        renderImagesForKey(manifest, key);
-      }
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${path}`;
+        
+        const getRes = await fetch(apiUrl, { headers: { "Authorization": `Bearer ${token}` } });
+        let sha = getRes.ok ? (await getRes.json()).sha : "";
 
-      document.getElementById('keySelect').addEventListener('change', loadAndRender);
+        const jsonString = JSON.stringify(jsonContentObject, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(jsonString)));
 
-      document.getElementById('uploadForm').addEventListener('submit', async function(e){
-        e.preventDefault();
-        const form = e.currentTarget;
-        const data = new FormData(form);
-        const resEl = document.getElementById('result');
-        resEl.textContent = 'Uploading...';
-
-        try{
-          const res = await fetch('/upload', { method: 'POST', body: data });
-          const json = await res.json();
-          if(json.ok){
-            resEl.textContent = 'Uploaded: ' + (json.uploaded || []).join(', ');
-            await loadAndRender();
-          } else {
-            resEl.textContent = 'Upload failed: ' + (json.error || 'unknown');
-          }
-        } catch(err){
-          resEl.textContent = 'Upload error: ' + err.message;
-        }
-      });
-      document.getElementById('logoutBtn').addEventListener('click', async ()=>{
-        await fetch('/logout', { method:'POST' });
-        location.href = '/admin-login.html';
-      });
-
-      // initial render
-      loadAndRender();
-
-      // load jobs into selector
-      async function loadJobs(){
-        const r = await fetch('/assets/data/jobs.json');
-        const jobs = await r.json();
-        const sel = document.getElementById('jobSelect');
-        sel.innerHTML = '';
-        for(const [id, info] of Object.entries(jobs)){
-          const opt = document.createElement('option'); opt.value = id; opt.textContent = info.title || id; sel.appendChild(opt);
-        }
-        sel.addEventListener('change', ()=>{
-          const info = jobs[sel.value] || { requirements: [] };
-          document.getElementById('jobReqs').value = (info.requirements||[]).join('\n');
+        const putRes = await fetch(apiUrl, {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: commitMessage,
+            content: encodedContent,
+            sha: sha,
+            branch: GITHUB_BRANCH
+          })
         });
-        // trigger initial
-        if(sel.options.length) sel.dispatchEvent(new Event('change'));
-      }
-      loadJobs();
 
-      document.getElementById('saveJobReq').addEventListener('click', async ()=>{
-        const id = document.getElementById('jobSelect').value;
-        const txt = document.getElementById('jobReqs').value;
-        const requirements = txt.split('\n').map(s=>s.trim()).filter(Boolean);
-        document.getElementById('jobMsg').textContent = 'Saving...';
-        const res = await fetch('/api/jobs/'+encodeURIComponent(id), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ requirements }) });
-        const json = await res.json();
-        if(json.ok){ document.getElementById('jobMsg').textContent = 'Saved.'; setTimeout(()=>document.getElementById('jobMsg').textContent='',1500); }
-        else document.getElementById('jobMsg').textContent = 'Save failed';
+        if (!putRes.ok) {
+          const err = await putRes.json();
+          throw new Error(err.message || "Commit failed.");
+        }
+        return true;
+      }
+
+      // --- JOBS LOGIC ---
+      async function loadJobs() {
+        try {
+          const res = await fetch('./assets/data/jobs.json');
+          jobsData = await res.json();
+          const sel = document.getElementById('jobSelect');
+          sel.innerHTML = '';
+          for (const [id, info] of Object.entries(jobsData)) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = info.title || id;
+            sel.appendChild(opt);
+          }
+          if (sel.options.length) sel.dispatchEvent(new Event('change'));
+        } catch (e) { console.error("Error loading jobs", e); }
+      }
+
+      document.getElementById('jobSelect').addEventListener('change', (e) => {
+        const info = jobsData[e.target.value] || { requirements: [] };
+        document.getElementById('jobReqs').value = (info.requirements || []).join('\n');
       });
+
+      document.getElementById('addJobForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('addJobMsg');
+        msg.textContent = 'Committing new job...';
+        
+        const key = document.getElementById('newJobKey').value.trim().toLowerCase().replace(/\s+/g, '-');
+        const title = document.getElementById('newJobTitle').value.trim();
+        const requirements = document.getElementById('newJobReqs').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+        jobsData[key] = { title, requirements };
+
+        try {
+          await commitFileToGitHub('assets/data/jobs.json', jobsData, `Add new job: ${title}`);
+          msg.className = 'msg success';
+          msg.textContent = 'Job added successfully!';
+          document.getElementById('addJobForm').reset();
+          loadJobs();
+        } catch (err) {
+          msg.className = 'msg error';
+          msg.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      document.getElementById('saveJobBtn').addEventListener('click', async () => {
+        const msg = document.getElementById('editJobMsg');
+        msg.textContent = 'Saving changes...';
+        const id = document.getElementById('jobSelect').value;
+        const requirements = document.getElementById('jobReqs').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+        if (jobsData[id]) jobsData[id].requirements = requirements;
+
+        try {
+          await commitFileToGitHub('assets/data/jobs.json', jobsData, `Update requirements for ${id}`);
+          msg.className = 'msg success';
+          msg.textContent = 'Saved successfully!';
+          setTimeout(() => msg.textContent = '', 3000);
+        } catch (err) {
+          msg.className = 'msg error';
+          msg.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      // --- MANIFEST / IMAGE LOGIC ---
+      async function loadManifest() {
+        try {
+          const res = await fetch('./assets/images/manifest.json');
+          manifestData = await res.json();
+          renderManifestImages();
+        } catch (e) { manifestData = {}; }
+      }
+
+      function renderManifestImages() {
+        const key = document.getElementById('imageKeySelect').value;
+        const container = document.getElementById('manifestImagesList');
+        const info = manifestData[key] || { images: [], primary: null };
+        
+        if (!info.images || info.images.length === 0) {
+          container.innerHTML = '<i>No images linked in manifest for this key.</i>';
+          return;
+        }
+
+        container.innerHTML = '<b>Current Images:</b><ul>' + info.images.map(img => `<li>${img} ${img === info.primary ? '(Primary)' : ''}</li>`).join('') + '</ul>';
+      }
+
+      document.getElementById('imageKeySelect').addEventListener('change', renderManifestImages);
+
+      document.getElementById('addImageToManifestBtn').addEventListener('click', async () => {
+        const msg = document.getElementById('manifestMsg');
+        msg.textContent = 'Updating manifest...';
+        const key = document.getElementById('imageKeySelect').value;
+        const filename = document.getElementById('newImageFilename').value.trim();
+
+        if (!filename) {
+          msg.className = 'msg error';
+          msg.textContent = 'Please enter an image filename.';
+          return;
+        }
+
+        if (!manifestData[key]) manifestData[key] = { images: [], primary: null };
+        if (!manifestData[key].images.includes(filename)) {
+          manifestData[key].images.push(filename);
+          if (!manifestData[key].primary) manifestData[key].primary = filename; // Set as primary if first
+        }
+
+        try {
+          await commitFileToGitHub('assets/images/manifest.json', manifestData, `Update image manifest for ${key}`);
+          msg.className = 'msg success';
+          msg.textContent = 'Manifest updated successfully!';
+          document.getElementById('newImageFilename').value = '';
+          renderManifestImages();
+        } catch (err) {
+          msg.className = 'msg error';
+          msg.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        sessionStorage.clear();
+        location.href = 'admin-login.html';
+      });
+
+      // Init
+      loadJobs();
+      loadManifest();
     </script>
   </body>
 </html>
