@@ -55,6 +55,10 @@ app.get('/admin', requireAuth, (req, res) => {
   res.sendFile(path.join(publicDir, 'admin.html'));
 });
 
+app.get('/jobs', (req, res) => {
+  res.sendFile(path.join(publicDir, 'jobs.html'));
+});
+
 // login endpoint
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
